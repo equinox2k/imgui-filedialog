@@ -28,7 +28,7 @@ namespace Eq2k.FileDialog.Example.UI
 
         public ModeEnum Mode { get; set; }
 
-        private string _selectedFolder;
+        private string _selectedFolder; //todo tidy + spacing
         public string SelectedFolder
         {
             get
@@ -108,6 +108,46 @@ namespace Eq2k.FileDialog.Example.UI
             return specialFolders.ToArray();
         }
 
+
+        private void DrawLines(Vector2[] points, Vector2 location, float size)
+        {
+            var iconColor = ImGui.ColorConvertFloat4ToU32(new Vector4(1, 1, 1, 1));
+            var drawList = ImGui.GetWindowDrawList();
+            for (var i = 0; i < points.Length; i += 2)
+            {
+                var vector1 = (points[i] / 100) * size;
+                var vector2 = (points[i + 1] / 100) * size;
+                drawList.AddLine(location + vector1, location + vector2, iconColor);
+            }
+        }
+
+        private void GenerateFileIcon(Vector2 location, float size)
+        {
+            var points = new[] {
+                new Vector2(0.0f,0.0f), new Vector2(45.0f, 0.0f),
+                new Vector2(45.0f,0.0f), new Vector2(55.0f, 22.5f),
+                new Vector2(55.0f,22.5f), new Vector2(100.0f, 22.5f),
+                new Vector2(100.0f,22.5f), new Vector2(100.0f, 87.5f),
+                new Vector2(100.0f,87.5f), new Vector2(0.0f, 87.5f),
+                new Vector2(0.0f,87.5f), new Vector2(0.0f, 0.0f)
+            };
+            DrawLines(points, location, size);
+        }
+
+        private void GenerateFolderIcon(Vector2 location, float size)
+        {
+            var points = new[] {
+                new Vector2(12.5f,0.0f), new Vector2(62.5f, 0.0f),
+                new Vector2(62.5f,0.0f), new Vector2(87.5f, 50.0f),
+                new Vector2(87.5f,50.0f), new Vector2(87.5f, 100.0f),
+                new Vector2(87.5f,100.0f), new Vector2(12.5f, 100.0f),
+                new Vector2(12.5f,100.0f), new Vector2(12.5f, 0.0f),
+                new Vector2(62.5f,0.0f), new Vector2(62.5f, 50.0f),
+                new Vector2(62.5f,50.0f), new Vector2(87.5f, 50.0f)
+            };
+            DrawLines(points, location, size);
+        }
+
         private bool ProcessChildFolders(string path)
         {
             var result = false;
@@ -127,11 +167,19 @@ namespace Eq2k.FileDialog.Example.UI
                 var isDirectory = (attributes & FileAttributes.Directory) == FileAttributes.Directory;
                 if (isDirectory)
                 {
-                    if (ImGui.Selectable($"DIR - {name}", false, ImGuiSelectableFlags.DontClosePopups))
+                    var iconPosition = ImGui.GetWindowPos() + ImGui.GetCursorPos();
+                    iconPosition.Y -= ImGui.GetScrollY();
+
+                    var lineHeight = ImGui.GetTextLineHeight();
+                    ImGui.SetCursorPosX(lineHeight * 2);
+
+                    if (ImGui.Selectable(name, false, ImGuiSelectableFlags.DontClosePopups))
                     {
                         SelectedFile = string.Empty;
                         _selectedFolder = fse;
                     }
+
+                    GenerateFolderIcon(iconPosition, lineHeight);
                 }
             }
 
@@ -173,8 +221,15 @@ namespace Eq2k.FileDialog.Example.UI
                         continue;
                     }
 
+   
+                    var iconPosition = ImGui.GetWindowPos() + ImGui.GetCursorPos();
+                    iconPosition.Y -= ImGui.GetScrollY();
+
+                    var lineHeight = ImGui.GetTextLineHeight();
+                    ImGui.SetCursorPosX(lineHeight * 2);
+
                     bool isSelected = SelectedFile == fse;
-                    if (ImGui.Selectable($"FILE - {name}", isSelected, ImGuiSelectableFlags.DontClosePopups | ImGuiSelectableFlags.AllowDoubleClick))
+                    if (ImGui.Selectable(name, isSelected, ImGuiSelectableFlags.DontClosePopups | ImGuiSelectableFlags.AllowDoubleClick))
                     {
                         SelectedFile = fse;
                         if (ImGui.IsMouseDoubleClicked(0))
@@ -184,6 +239,9 @@ namespace Eq2k.FileDialog.Example.UI
                             ImGui.CloseCurrentPopup();
                         }
                     }
+
+                    GenerateFileIcon(iconPosition, lineHeight);
+
                 }
             }
 
