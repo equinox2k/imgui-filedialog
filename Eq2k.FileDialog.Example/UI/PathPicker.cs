@@ -168,7 +168,7 @@ namespace Eq2k.FileDialog.Example.UI
                     _selectedFolder = fse;
                 }
 
-                GenerateFolderIcon(iconPosition, lineHeight);
+                GenerateFileIcon(iconPosition, lineHeight);
             }
 
             return false;
@@ -225,7 +225,7 @@ namespace Eq2k.FileDialog.Example.UI
                     }
                 }
 
-                GenerateFileIcon(iconPosition, lineHeight);
+                GenerateFolderIcon(iconPosition, lineHeight);
             }
 
             return result;
