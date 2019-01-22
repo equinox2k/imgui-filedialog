@@ -3,6 +3,7 @@ using System.Numerics;
 using System.Threading;
 using ImGuiNET;
 using Eq2k.FileDialog.Example.UI;
+using System.IO;
 
 namespace Eq2k.FileDialog.Example
 {
@@ -55,14 +56,14 @@ namespace Eq2k.FileDialog.Example
             {
                 if (ImGui.Button("File Picker", new Vector2(100, 30)))
                 {
-                    _filePicker.ShowModal("/");
+                    _filePicker.ShowModal(Directory.GetCurrentDirectory());
                 }
                 ImGui.SameLine();
                 ImGui.Text(_filePath);
 
                 if (ImGui.Button("Folder Picker", new Vector2(100, 30)))
                 {
-                    _folderPicker.ShowModal("/");
+                    _folderPicker.ShowModal(Directory.GetCurrentDirectory());
                 }
                 ImGui.SameLine();
                 ImGui.Text(_folderPath);

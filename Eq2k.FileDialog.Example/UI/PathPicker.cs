@@ -96,7 +96,6 @@ namespace Eq2k.FileDialog.Example.UI
             return specialFolders.ToArray();
         }
 
-
         private static void DrawLines(IReadOnlyList<Vector2> points, Vector2 location, float size)
         {
             var iconColor = ImGui.ColorConvertFloat4ToU32(new Vector4(1, 1, 1, 1));
