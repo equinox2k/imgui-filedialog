@@ -12,13 +12,13 @@ namespace Eq2k.FileDialog.Example.UI
 {
     public class PathPicker
     {
-        public enum ModeEnum
+        public enum PickerMode
         {
             File,
             Folder
         }
 
-        private bool Like(string str, string pattern)
+        private static bool Like(string str, string pattern)
         {
             return new Regex("^" + Regex.Escape(pattern).Replace(@"\*", ".*").Replace(@"\?", ".") + "$", RegexOptions.IgnoreCase | RegexOptions.Singleline).IsMatch(str);
         }
@@ -26,19 +26,13 @@ namespace Eq2k.FileDialog.Example.UI
         private bool _showModal;
         private bool _open;
 
-        public ModeEnum Mode { get; set; }
+        public PickerMode Mode { get; set; }
 
-        private string _selectedFolder; //todo tidy + spacing
+        private string _selectedFolder;
         public string SelectedFolder
         {
-            get
-            {
-                return _selectedFolder;
-            }
-            set
-            {
-                _selectedFolder = value;
-            }
+            get => _selectedFolder;
+            set => _selectedFolder = value;
         }
 
         public string SelectedFile { get; private set; }
@@ -61,34 +55,32 @@ namespace Eq2k.FileDialog.Example.UI
 
         public PathPicker()
         {
-            Mode = ModeEnum.File;
-            AllowedFiles = new string[] { "*.*" };
+            Mode = PickerMode.File;
+            AllowedFiles = new [] { "*.*" };
             ShowHidden = false;
         }
 
-        private string[] GetSpecialFolders()
+        private static IEnumerable<string> GetSpecialFolders()
         {
             var specialFolders = new List<string>();
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX) || RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
                 specialFolders.Add($"/|/");
-                specialFolders.Add($"Home|{Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)}");
+                specialFolders.Add($"User|{Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)}");
                 specialFolders.Add($"Desktop|{Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory)}");
                 specialFolders.Add($"Documents|{Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)}/Documents");
             }
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                //TODO
-            }
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            {
-                //TODO
+                specialFolders.Add($"User|{Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)}");
+                specialFolders.Add($"Desktop|{Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory)}");
+                specialFolders.Add($"Documents|{Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)}");
             }
 
             var logicalDrives = Directory.GetLogicalDrives();
             foreach (var logicalDrive in logicalDrives)
             {
-                if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX) || RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
                 {
                     if (logicalDrive.StartsWith("/Volume", StringComparison.CurrentCultureIgnoreCase))
                     {
@@ -97,11 +89,7 @@ namespace Eq2k.FileDialog.Example.UI
                 }
                 else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 {
-                    //TODO
-                }
-                else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                {
-                    //TODO
+                    specialFolders.Add($"{logicalDrive.Substring(0, 2)}|{logicalDrive}");
                 }
             }
 
@@ -109,11 +97,11 @@ namespace Eq2k.FileDialog.Example.UI
         }
 
 
-        private void DrawLines(Vector2[] points, Vector2 location, float size)
+        private static void DrawLines(IReadOnlyList<Vector2> points, Vector2 location, float size)
         {
             var iconColor = ImGui.ColorConvertFloat4ToU32(new Vector4(1, 1, 1, 1));
             var drawList = ImGui.GetWindowDrawList();
-            for (var i = 0; i < points.Length; i += 2)
+            for (var i = 0; i < points.Count; i += 2)
             {
                 var vector1 = (points[i] / 100) * size;
                 var vector2 = (points[i + 1] / 100) * size;
@@ -121,7 +109,7 @@ namespace Eq2k.FileDialog.Example.UI
             }
         }
 
-        private void GenerateFileIcon(Vector2 location, float size)
+        private static void GenerateFileIcon(Vector2 location, float size)
         {
             var points = new[] {
                 new Vector2(0.0f,0.0f), new Vector2(45.0f, 0.0f),
@@ -134,7 +122,7 @@ namespace Eq2k.FileDialog.Example.UI
             DrawLines(points, location, size);
         }
 
-        private void GenerateFolderIcon(Vector2 location, float size)
+        private static void GenerateFolderIcon(Vector2 location, float size)
         {
             var points = new[] {
                 new Vector2(12.5f,0.0f), new Vector2(62.5f, 0.0f),
@@ -150,56 +138,11 @@ namespace Eq2k.FileDialog.Example.UI
 
         private bool ProcessChildFolders(string path)
         {
-            var result = false;
-
             foreach (var fse in Directory.EnumerateFileSystemEntries(path))
             {
-                string name = Path.GetFileName(fse);
+                var name = Path.GetFileName(fse);
 
-                FileAttributes attributes = File.GetAttributes(fse);
-                var isHidden = (attributes & FileAttributes.Hidden) == FileAttributes.Hidden;
-
-                if (!ShowHidden && isHidden)
-                {
-                    continue;
-                }
-
-                var isDirectory = (attributes & FileAttributes.Directory) == FileAttributes.Directory;
-                if (isDirectory)
-                {
-                    var iconPosition = ImGui.GetWindowPos() + ImGui.GetCursorPos();
-                    iconPosition.Y -= ImGui.GetScrollY();
-
-                    var lineHeight = ImGui.GetTextLineHeight();
-                    ImGui.SetCursorPosX(lineHeight * 2);
-
-                    if (ImGui.Selectable(name, false, ImGuiSelectableFlags.DontClosePopups))
-                    {
-                        SelectedFile = string.Empty;
-                        _selectedFolder = fse;
-                    }
-
-                    GenerateFolderIcon(iconPosition, lineHeight);
-                }
-            }
-
-            return result;
-        }
-
-        private bool ProcessChildFiles(string path)
-        {
-            var result = false;
-
-            if (Mode == ModeEnum.Folder)
-            {
-                return result;
-            }
-
-            foreach (var fse in Directory.EnumerateFileSystemEntries(path))
-            {
-                string name = Path.GetFileName(fse);
-
-                FileAttributes attributes = File.GetAttributes(fse);
+                var attributes = File.GetAttributes(fse);
                 var isHidden = (attributes & FileAttributes.Hidden) == FileAttributes.Hidden;
 
                 if (!ShowHidden && isHidden)
@@ -210,39 +153,79 @@ namespace Eq2k.FileDialog.Example.UI
                 var isDirectory = (attributes & FileAttributes.Directory) == FileAttributes.Directory;
                 if (!isDirectory)
                 {
-                    var allowed = false;
-                    foreach (var allowedFile in AllowedFiles)
-                    {
-                        allowed |= Like(name, allowedFile);
-                    }
-
-                    if (!allowed)
-                    {
-                        continue;
-                    }
-
-   
-                    var iconPosition = ImGui.GetWindowPos() + ImGui.GetCursorPos();
-                    iconPosition.Y -= ImGui.GetScrollY();
-
-                    var lineHeight = ImGui.GetTextLineHeight();
-                    ImGui.SetCursorPosX(lineHeight * 2);
-
-                    bool isSelected = SelectedFile == fse;
-                    if (ImGui.Selectable(name, isSelected, ImGuiSelectableFlags.DontClosePopups | ImGuiSelectableFlags.AllowDoubleClick))
-                    {
-                        SelectedFile = fse;
-                        if (ImGui.IsMouseDoubleClicked(0))
-                        {
-                            Cancelled = false;
-                            result = true;
-                            ImGui.CloseCurrentPopup();
-                        }
-                    }
-
-                    GenerateFileIcon(iconPosition, lineHeight);
-
+                    continue;
                 }
+
+                var iconPosition = ImGui.GetWindowPos() + ImGui.GetCursorPos();
+                iconPosition.Y -= ImGui.GetScrollY();
+
+                var lineHeight = ImGui.GetTextLineHeight();
+                ImGui.SetCursorPosX(lineHeight * 2);
+
+                if (ImGui.Selectable(name, false, ImGuiSelectableFlags.DontClosePopups))
+                {
+                    SelectedFile = string.Empty;
+                    _selectedFolder = fse;
+                }
+
+                GenerateFolderIcon(iconPosition, lineHeight);
+            }
+
+            return false;
+        }
+
+        private bool ProcessChildFiles(string path)
+        {
+            if (Mode == PickerMode.Folder)
+            {
+                return false;
+            }
+
+            var result = false;
+
+            foreach (var fse in Directory.EnumerateFileSystemEntries(path))
+            {
+                var name = Path.GetFileName(fse);
+
+                var attributes = File.GetAttributes(fse);
+                var isHidden = (attributes & FileAttributes.Hidden) == FileAttributes.Hidden;
+
+                if (!ShowHidden && isHidden)
+                {
+                    continue;
+                }
+
+                var isDirectory = (attributes & FileAttributes.Directory) == FileAttributes.Directory;
+                if (isDirectory)
+                {
+                    continue;
+                }
+
+                var allowed = AllowedFiles.Aggregate(false, (current, allowedFile) => current | Like(name, allowedFile));
+                if (!allowed)
+                {
+                    continue;
+                }
+                
+                var iconPosition = ImGui.GetWindowPos() + ImGui.GetCursorPos();
+                iconPosition.Y -= ImGui.GetScrollY();
+
+                var lineHeight = ImGui.GetTextLineHeight();
+                ImGui.SetCursorPosX(lineHeight * 2);
+
+                var isSelected = SelectedFile == fse;
+                if (ImGui.Selectable(name, isSelected, ImGuiSelectableFlags.DontClosePopups | ImGuiSelectableFlags.AllowDoubleClick))
+                {
+                    SelectedFile = fse;
+                    if (ImGui.IsMouseDoubleClicked(0))
+                    {
+                        Cancelled = false;
+                        result = true;
+                        ImGui.CloseCurrentPopup();
+                    }
+                }
+
+                GenerateFileIcon(iconPosition, lineHeight);
             }
 
             return result;
@@ -262,12 +245,12 @@ namespace Eq2k.FileDialog.Example.UI
                 return false;
             }
 
-            var result = false;
-
             if (!ImGui.BeginPopupModal($"{Mode} Browser"))
             {
-                return result;
+                return false;
             }
+
+            var result = false;
 
             if (ImGui.IsWindowAppearing())
             {
@@ -278,8 +261,9 @@ namespace Eq2k.FileDialog.Example.UI
 
             ImGui.PushItemWidth(size.X - 16);
             ImGui.InputText("###file-path", ref _selectedFolder, 300, ImGuiInputTextFlags.ReadOnly);
+            ImGui.Spacing();
 
-            if (ImGui.BeginChildFrame(1, new Vector2(200, size.Y - 96), ImGuiWindowFlags.None))
+            if (ImGui.BeginChildFrame(1, new Vector2(200, size.Y - 100), ImGuiWindowFlags.None))
             {
                 var specialFolders = GetSpecialFolders();
                 foreach (var specialFolder in specialFolders)
@@ -294,9 +278,9 @@ namespace Eq2k.FileDialog.Example.UI
             }
 
             ImGui.SameLine();
-            if (ImGui.BeginChildFrame(2, new Vector2(size.X - 224, size.Y - 96), ImGuiWindowFlags.None))
+            if (ImGui.BeginChildFrame(2, new Vector2(size.X - 224, size.Y - 100), ImGuiWindowFlags.None))
             {
-                DirectoryInfo directoryInfo = new DirectoryInfo(_selectedFolder);
+                var directoryInfo = new DirectoryInfo(_selectedFolder);
                 if (directoryInfo.Parent != null)
                 {
                     if (ImGui.Selectable("..", false, ImGuiSelectableFlags.DontClosePopups))
@@ -328,8 +312,8 @@ namespace Eq2k.FileDialog.Example.UI
             if (ImGui.Button("Open", new Vector2(100, 30)))
             {
                 var valid = false;
-                valid |= Mode == ModeEnum.File && !string.IsNullOrEmpty(SelectedFile);
-                valid |= Mode == ModeEnum.Folder && !string.IsNullOrEmpty(SelectedFolder);
+                valid |= Mode == PickerMode.File && !string.IsNullOrEmpty(SelectedFile);
+                valid |= Mode == PickerMode.Folder && !string.IsNullOrEmpty(SelectedFolder);
                 if (valid)
                 {
                     Cancelled = false;

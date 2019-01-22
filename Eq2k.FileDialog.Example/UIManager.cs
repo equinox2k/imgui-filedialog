@@ -24,11 +24,11 @@ namespace Eq2k.FileDialog.Example
 
             _filePicker = new PathPicker
             {
-                Mode = PathPicker.ModeEnum.File
+                Mode = PathPicker.PickerMode.File
             };
             _folderPicker = new PathPicker
             {
-                Mode = PathPicker.ModeEnum.Folder
+                Mode = PathPicker.PickerMode.Folder
             };
         }
 

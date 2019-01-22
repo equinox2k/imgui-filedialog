@@ -40,9 +40,6 @@
     <None Remove="Shaders\SPIR-V\imgui-vert.spv" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\PNI.Toolbox.Library\PNI.Toolbox.Library.csproj" />
-  </ItemGroup>
-  <ItemGroup>
     <None Update="Shaders\SPIRV\imgui-vert.spv">
       <LogicalName>Phoenix.Import.Application.Shaders.SPIRV.imgui-vert.spv</LogicalName>
     </None>
